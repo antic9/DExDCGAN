@@ -29,21 +29,21 @@ dataroot = "./Dataset/cnn_opt_train"
 # dataloader
 workers = 2
 # batch_size
-batch_size = 128
+batch_size = 1280
 # Resize image
 image_size = 64
 # RGB
 nc = 3
 # Latent space dim
-nz = 100
+nz = 128
 # Number of feature maps in generator
-ngf = 64
+ngf = 128
 # Number of feature maps in discriminator
-ndf = 64
+ndf = 128
 # Number of training epochs
-num_epochs = 50
+num_epochs = 100
 # Learning rate
-lr = 0.0002
+lr = 0.002
 # Beta1 hyperparam for Adam optimizers
 beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
@@ -263,3 +263,7 @@ if __name__ == '__main__':
             #     plt.imshow(np.transpose(vutils.make_grid(fake, padding=2, normalize=True),(1,2,0)))
             #     plt.show()
             iters += 1
+    import torch.onnx as onnx
+import torchvision.models as models
+
+torch.save(netG.state_dict(), './temp.pth')
