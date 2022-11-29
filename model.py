@@ -34,7 +34,7 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, cfg):
         super(Discriminator, self).__init__()
-        self.ngpu = cfg.ngpu
+        # self.ngpu = cfg.ngpu
         self.main = nn.Sequential(
             # input is (cfg.nc) x 64 x 64
             nn.Conv2d(cfg.nc, cfg.ndf, 4, 2, 1, bias=False),

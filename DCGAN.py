@@ -131,7 +131,7 @@ if __name__ == '__main__':
     netG.apply(weights_init)
 
     # Create the Discriminator
-    netD = model.Discriminator(ngpu).to(device)
+    netD = model.Discriminator(cfg).to(device)
 
     # Handle multi-gpu if desired
     if (device.type == 'cuda') and (ngpu > 1):
@@ -234,7 +234,7 @@ if __name__ == '__main__':
                 plt.title("Fake Images (iteration " + str(iters) +")")
                 plt.imshow(np.transpose(vutils.make_grid(fake, padding=2, normalize=True),(1,2,0)))
                 if epoch % 10 == 0:
-                    plt.savefig(img_dir / f"fake-{epoch.zfill(4)}.png")
-                    torch.save(netG.state_dict(), chk_dir / f'{epoch.zfill(4)}.pth')
+                    plt.savefig(img_dir / f"fake-{str(epoch).zfill(4)}.png")
+                    torch.save(netG.state_dict(), chk_dir / f'{str(epoch).zfill(4)}.pth')
             iters += 1
 
