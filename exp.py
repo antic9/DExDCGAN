@@ -8,53 +8,19 @@ import torchvision.utils as vutils
 from torchvision.utils import save_image
 import argparse
 
-
-# Number of feature maps in generator
-ngf = 128
-# Latent space dim
-nz = 256
-# RGB
-nc = 3
-
-class Generator(nn.Module):
-    def __init__(self, ngpu):
-        super(Generator, self).__init__()
-        self.ngpu = ngpu
-        self.main = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d( nz, ngf * 8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf * 8),
-            nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 4),
-            nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 2),
-            nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf),
-            nn.ReLU(True),
-            # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
-            nn.Tanh()
-            # state size. (nc) x 64 x 64
-        )
-
-    def forward(self, input):
-        return self.main(input)
+import model 
+from parameters import HPS
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--load-path', type=str, default=None)
+parser.add_argument('--task', type=str, default='cnn')
 args = parser.parse_args()
 
-
+cfg = HPS[args.task]
 ngpu = 1
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
-netG = Generator(ngpu).to(device)
+netG = model.Generator(cfg).to(device)
 
 # Handle multi-gpu if desired
 if (device.type == 'cuda') and (ngpu > 1):
@@ -62,7 +28,7 @@ if (device.type == 'cuda') and (ngpu > 1):
 
 netG.load_state_dict(torch.load(args.load_path))
 
-noise = np.zeros((64,128,1,1))
+noise = np.zeros((64,cfg.ngf,1,1))
 noise_index = 1
 scale = np.arange(33,528,step=66)
 x = [i-3.5 for i in range(8)]
