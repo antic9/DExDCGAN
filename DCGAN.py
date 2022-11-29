@@ -15,7 +15,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from pathlib import Path
+import model
 import datetime
+from parameters import HPS
 
 
 
@@ -52,64 +54,21 @@ beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 1
 
-# # Generator Code
-# class Generator(nn.Module):
-#     def __init__(self, ngpu):
-#         super(Generator, self).__init__()
-#         self.ngpu = ngpu
-#         self.main = nn.Sequential(
-#             # input is Z, going into a convolution
-#             nn.ConvTranspose2d( nz, ngf * 8, 4, 1, 0, bias=False),
-#             nn.BatchNorm2d(ngf * 8),
-#             nn.ReLU(True),
-#             # state size. (ngf*8) x 4 x 4
-#             nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
-#             nn.BatchNorm2d(ngf * 4),
-#             nn.ReLU(True),
-#             # state size. (ngf*4) x 8 x 8
-#             nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
-#             nn.BatchNorm2d(ngf * 2),
-#             nn.ReLU(True),
-#             # state size. (ngf*2) x 16 x 16
-#             nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
-#             nn.BatchNorm2d(ngf),
-#             nn.ReLU(True),
-#             # state size. (ngf) x 32 x 32
-#             nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
-#             nn.Tanh()
-#             # state size. (nc) x 64 x 64
-#         )
+def directory():
+    save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    runs_dir = Path(f"runs")
+    root_dir = runs_dir / f"{save_id}"
+    img_dir = root_dir / "images"
+    chk_dir = root_dir / "checkpoints"
+    log_dir = root_dir / "logs"
 
-#     def forward(self, input):
-#         return self.main(input)
+    runs_dir.mkdir(exist_ok=True)
+    root_dir.mkdir(exist_ok=True)
+    chk_dir.mkdir(exist_ok=True)
+    img_dir.mkdir(exist_ok=True)
+    log_dir.mkdir(exist_ok=True)
 
-# class Discriminator(nn.Module):
-#     def __init__(self, ngpu):
-#         super(Discriminator, self).__init__()
-#         self.ngpu = ngpu
-#         self.main = nn.Sequential(
-#             # input is (nc) x 64 x 64
-#             nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
-#             nn.LeakyReLU(0.2, inplace=True),
-#             # state size. (ndf) x 32 x 32
-#             nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
-#             nn.BatchNorm2d(ndf * 2),
-#             nn.LeakyReLU(0.2, inplace=True),
-#             # state size. (ndf*2) x 16 x 16
-#             nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
-#             nn.BatchNorm2d(ndf * 4),
-#             nn.LeakyReLU(0.2, inplace=True),
-#             # state size. (ndf*4) x 8 x 8
-#             nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
-#             nn.BatchNorm2d(ndf * 8),
-#             nn.LeakyReLU(0.2, inplace=True),
-#             # state size. (ndf*8) x 4 x 4
-#             nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
-#             nn.Sigmoid()
-#         )
-
-#     def forward(self, input):
-#         return self.main(input)
+    return img_dir, chk_dir, log_dir
 
 # custom weights initialization
 def weights_init(m):
@@ -135,33 +94,35 @@ def create_dataset():
 
     return dataloader
 
+def save_modelinfo(netG, netD, _pth):
+    with open(_pth / f"info.txt","w") as f:
+        f.write(f"Generator:\n{netG}\nDiscriminator:\n{netD}")
+
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--task', type=str, default='cnn')
+    args = parser.parse_args()
+
     # Decide which device we want to run on
-    device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
-    save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    if args.cpu or not torch.cuda.is_available():
+        device = torch.device('cpu')
+    else:
+        device = torch.device('cuda')
     dataloader = create_dataset()
-    runs_dir = Path(f"runs")
-    root_dir = runs_dir / f"{save_id}"
-    img_dir = root_dir / "images"
-    chk_dir = root_dir / "checkpoints"
-    log_dir = root_dir / "logs"
-
-    runs_dir.mkdir(exist_ok=True)
-    root_dir.mkdir(exist_ok=True)
-    chk_dir.mkdir(exist_ok=True)
-    img_dir.mkdir(exist_ok=True)
-    log_dir.mkdir(exist_ok=True)
-
-    # Plot some training images
-    real_batch = next(iter(dataloader))
-    plt.figure(figsize=(8,8))
-    plt.axis("off")
-    plt.title("Training Images")
-    plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=2, normalize=True).cpu(),(1,2,0)))
+    img_dir, chk_dir, log_dir = directory()
+    
+    cfg = HPS[args.task]
+    # # Plot some training images
+    # real_batch = next(iter(dataloader))
+    # plt.figure(figsize=(8,8))
+    # plt.axis("off")
+    # plt.title("Training Images")
+    # plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=2, normalize=True).cpu(),(1,2,0)))
 
     # Create the generator
-    netG = Generator(ngpu).to(device)
+    netG = model.Generator(cfg).to(device)
 
     # Handle multi-gpu if desired
     if (device.type == 'cuda') and (ngpu > 1):
@@ -169,11 +130,8 @@ if __name__ == '__main__':
 
     netG.apply(weights_init)
 
-    # Print the model
-    print(netG)
-
     # Create the Discriminator
-    netD = Discriminator(ngpu).to(device)
+    netD = model.Discriminator(ngpu).to(device)
 
     # Handle multi-gpu if desired
     if (device.type == 'cuda') and (ngpu > 1):
@@ -181,8 +139,8 @@ if __name__ == '__main__':
 
     netD.apply(weights_init)
 
-    # Print the model
-    print(netD)
+    # Save Model Info
+    save_modelinfo(netG,netD,log_dir)
 
     # Initialize BCELoss function
     criterion = nn.BCELoss()
