@@ -6,11 +6,13 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 from torchvision.utils import save_image
+import argparse
+
 
 # Number of feature maps in generator
-ngf = 64
+ngf = 128
 # Latent space dim
-nz = 100
+nz = 256
 # RGB
 nc = 3
 
@@ -44,6 +46,11 @@ class Generator(nn.Module):
     def forward(self, input):
         return self.main(input)
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--load-path', type=str, default=None)
+args = parser.parse_args()
+
+
 ngpu = 1
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
@@ -53,9 +60,9 @@ netG = Generator(ngpu).to(device)
 if (device.type == 'cuda') and (ngpu > 1):
     netG = nn.DataParallel(netG, list(range(ngpu)))
 
-netG.load_state_dict(torch.load('temp.pth'))
+netG.load_state_dict(torch.load(args.load_path))
 
-noise = np.zeros((64,100,1,1))
+noise = np.zeros((64,128,1,1))
 noise_index = 1
 scale = np.arange(33,528,step=66)
 x = [i-3.5 for i in range(8)]

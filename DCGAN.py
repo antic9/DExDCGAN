@@ -14,7 +14,10 @@ import torchvision.utils as vutils
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-# from IPython.display import HTML
+from pathlib import Path
+import datetime
+
+
 
 # 乱数の固定
 manualSeed = 999
@@ -35,7 +38,7 @@ image_size = 64
 # RGB
 nc = 3
 # Latent space dim
-nz = 128
+nz = 256
 # Number of feature maps in generator
 ngf = 128
 # Number of feature maps in discriminator
@@ -49,64 +52,64 @@ beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 1
 
-# Generator Code
-class Generator(nn.Module):
-    def __init__(self, ngpu):
-        super(Generator, self).__init__()
-        self.ngpu = ngpu
-        self.main = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d( nz, ngf * 8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf * 8),
-            nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 4),
-            nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 2),
-            nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf),
-            nn.ReLU(True),
-            # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
-            nn.Tanh()
-            # state size. (nc) x 64 x 64
-        )
+# # Generator Code
+# class Generator(nn.Module):
+#     def __init__(self, ngpu):
+#         super(Generator, self).__init__()
+#         self.ngpu = ngpu
+#         self.main = nn.Sequential(
+#             # input is Z, going into a convolution
+#             nn.ConvTranspose2d( nz, ngf * 8, 4, 1, 0, bias=False),
+#             nn.BatchNorm2d(ngf * 8),
+#             nn.ReLU(True),
+#             # state size. (ngf*8) x 4 x 4
+#             nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+#             nn.BatchNorm2d(ngf * 4),
+#             nn.ReLU(True),
+#             # state size. (ngf*4) x 8 x 8
+#             nn.ConvTranspose2d( ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+#             nn.BatchNorm2d(ngf * 2),
+#             nn.ReLU(True),
+#             # state size. (ngf*2) x 16 x 16
+#             nn.ConvTranspose2d( ngf * 2, ngf, 4, 2, 1, bias=False),
+#             nn.BatchNorm2d(ngf),
+#             nn.ReLU(True),
+#             # state size. (ngf) x 32 x 32
+#             nn.ConvTranspose2d( ngf, nc, 4, 2, 1, bias=False),
+#             nn.Tanh()
+#             # state size. (nc) x 64 x 64
+#         )
 
-    def forward(self, input):
-        return self.main(input)
+#     def forward(self, input):
+#         return self.main(input)
 
-class Discriminator(nn.Module):
-    def __init__(self, ngpu):
-        super(Discriminator, self).__init__()
-        self.ngpu = ngpu
-        self.main = nn.Sequential(
-            # input is (nc) x 64 x 64
-            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf) x 32 x 32
-            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*2) x 16 x 16
-            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*4) x 8 x 8
-            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid()
-        )
+# class Discriminator(nn.Module):
+#     def __init__(self, ngpu):
+#         super(Discriminator, self).__init__()
+#         self.ngpu = ngpu
+#         self.main = nn.Sequential(
+#             # input is (nc) x 64 x 64
+#             nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             # state size. (ndf) x 32 x 32
+#             nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+#             nn.BatchNorm2d(ndf * 2),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             # state size. (ndf*2) x 16 x 16
+#             nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+#             nn.BatchNorm2d(ndf * 4),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             # state size. (ndf*4) x 8 x 8
+#             nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+#             nn.BatchNorm2d(ndf * 8),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             # state size. (ndf*8) x 4 x 4
+#             nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+#             nn.Sigmoid()
+#         )
 
-    def forward(self, input):
-        return self.main(input)
+#     def forward(self, input):
+#         return self.main(input)
 
 # custom weights initialization
 def weights_init(m):
@@ -136,8 +139,19 @@ def create_dataset():
 if __name__ == '__main__':
     # Decide which device we want to run on
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
-
+    save_id = str(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     dataloader = create_dataset()
+    runs_dir = Path(f"runs")
+    root_dir = runs_dir / f"{save_id}"
+    img_dir = root_dir / "images"
+    chk_dir = root_dir / "checkpoints"
+    log_dir = root_dir / "logs"
+
+    runs_dir.mkdir(exist_ok=True)
+    root_dir.mkdir(exist_ok=True)
+    chk_dir.mkdir(exist_ok=True)
+    img_dir.mkdir(exist_ok=True)
+    log_dir.mkdir(exist_ok=True)
 
     # Plot some training images
     real_batch = next(iter(dataloader))
@@ -254,16 +268,15 @@ if __name__ == '__main__':
             D_losses.append(errD.item())
 
             # Generate image
-            # if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
-            #     with torch.no_grad():
-            #         fake = netG(fixed_noise).detach().cpu()
-            #     plt.figure(figsize=(8,8))
-            #     plt.axis("off")
-            #     plt.title("Fake Images (iteration " + str(iters) +")")
-            #     plt.imshow(np.transpose(vutils.make_grid(fake, padding=2, normalize=True),(1,2,0)))
-            #     plt.show()
+            if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
+                with torch.no_grad():
+                    fake = netG(fixed_noise).detach().cpu()
+                plt.figure(figsize=(8,8))
+                plt.axis("off")
+                plt.title("Fake Images (iteration " + str(iters) +")")
+                plt.imshow(np.transpose(vutils.make_grid(fake, padding=2, normalize=True),(1,2,0)))
+                if epoch % 10 == 0:
+                    plt.savefig(img_dir / f"fake-{epoch.zfill(4)}.png")
+                    torch.save(netG.state_dict(), chk_dir / f'{epoch.zfill(4)}.pth')
             iters += 1
-    import torch.onnx as onnx
-import torchvision.models as models
 
-torch.save(netG.state_dict(), './temp.pth')
