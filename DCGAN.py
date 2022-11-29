@@ -96,7 +96,7 @@ def create_dataset():
 
 def save_modelinfo(netG, netD, _pth):
     with open(_pth / f"info.txt","w") as f:
-        f.write(f"Generator:\n{netG}\nDiscriminator:\n{netD}")
+        f.write(f"{netG}\n{netD}")
 
 
 if __name__ == '__main__':
