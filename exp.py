@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 from torchvision.utils import save_image
 import argparse
-
-import model 
+import model
 from parameters import HPS
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--load-path', type=str, default=None)
 parser.add_argument('--task', type=str, default='cnn')
+
 args = parser.parse_args()
 
 cfg = HPS[args.task]
@@ -28,7 +29,7 @@ if (device.type == 'cuda') and (ngpu > 1):
 
 netG.load_state_dict(torch.load(args.load_path))
 
-noise = np.zeros((64,cfg.ngf,1,1))
+noise = np.zeros((64,cfg.nz,1,1))
 noise_index = 1
 scale = np.arange(33,528,step=66)
 x = [i-3.5 for i in range(8)]

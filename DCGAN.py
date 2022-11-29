@@ -33,24 +33,6 @@ torch.manual_seed(manualSeed)
 dataroot = "./Dataset/cnn_opt_train"
 # dataloader
 workers = 2
-# batch_size
-batch_size = 1280
-# Resize image
-image_size = 64
-# RGB
-nc = 3
-# Latent space dim
-nz = 256
-# Number of feature maps in generator
-ngf = 128
-# Number of feature maps in discriminator
-ndf = 128
-# Number of training epochs
-num_epochs = 100
-# Learning rate
-lr = 0.002
-# Beta1 hyperparam for Adam optimizers
-beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 1
 
@@ -79,23 +61,24 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
-def create_dataset():
+def create_dataset(cfg):
     # Create the dataset
     dataset = dset.ImageFolder(root=dataroot,
                             transform=transforms.Compose([
-                                transforms.Resize(image_size),
-                                transforms.CenterCrop(image_size),
+                                transforms.Resize(cfg.image_size),
+                                transforms.CenterCrop(cfg.image_size),
                                 transforms.ToTensor(),
                                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                             ]))
     # Create the dataloader
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=cfg.batch_size,
                                             shuffle=True, num_workers=workers)
 
     return dataloader
 
-def save_modelinfo(netG, netD, _pth):
+def save_modelinfo(netG, netD, cfg, _pth):
     with open(_pth / f"info.txt","w") as f:
+        f.write(f"{cfg}\n")
         f.write(f"{netG}\n{netD}")
 
 
@@ -104,16 +87,16 @@ if __name__ == '__main__':
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--task', type=str, default='cnn')
     args = parser.parse_args()
+    cfg = HPS[args.task]
 
     # Decide which device we want to run on
     if args.cpu or not torch.cuda.is_available():
         device = torch.device('cpu')
     else:
         device = torch.device('cuda')
-    dataloader = create_dataset()
+    dataloader = create_dataset(cfg)
     img_dir, chk_dir, log_dir = directory()
     
-    cfg = HPS[args.task]
     # # Plot some training images
     # real_batch = next(iter(dataloader))
     # plt.figure(figsize=(8,8))
@@ -140,21 +123,21 @@ if __name__ == '__main__':
     netD.apply(weights_init)
 
     # Save Model Info
-    save_modelinfo(netG,netD,log_dir)
+    save_modelinfo(netG,netD,cfg,log_dir)
 
     # Initialize BCELoss function
     criterion = nn.BCELoss()
 
     # Create latent vector
-    fixed_noise = torch.randn(64, nz, 1, 1, device=device)
+    fixed_noise = torch.randn(64, cfg.nz, 1, 1, device=device)
 
     # real and fake labels
     real_label = 1.
     fake_label = 0.
 
     # Setup Adam optimizers for both G and D
-    optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(beta1, 0.999))
-    optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(beta1, 0.999))
+    optimizerD = optim.Adam(netD.parameters(), lr=cfg.lr, betas=(cfg.beta1, 0.999))
+    optimizerG = optim.Adam(netG.parameters(), lr=cfg.lr, betas=(cfg.beta1, 0.999))
 
     iters = 0
 
@@ -167,7 +150,7 @@ if __name__ == '__main__':
 
     print("Starting Training Loop...")
     # For each epoch
-    for epoch in range(num_epochs):
+    for epoch in range(cfg.num_epochs):
         # For each batch in the dataloader
         for i, data in enumerate(dataloader, 0):
 
@@ -187,7 +170,7 @@ if __name__ == '__main__':
 
             ## Train with all-fake batch
             # Generate batch of latent vectors
-            noise = torch.randn(b_size, nz, 1, 1, device=device)
+            noise = torch.randn(b_size, cfg.nz, 1, 1, device=device)
             # Generate fake image batch with G
             fake = netG(noise)
             label.fill_(fake_label)
@@ -217,16 +200,29 @@ if __name__ == '__main__':
 
             # Loss
             if i % 50 == 0:
-                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-                    % (epoch, num_epochs, i, len(dataloader),
-                        errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
+                output = '[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'% (epoch, cfg.num_epochs, i, len(dataloader), errD.item(), errG.item(), D_x, D_G_z1, D_G_z2)
+                # output = f'[{epoch}/{cfg.num_epoch}]\tLoss_D: {}'
+                with open(log_dir / f"log.txt","a") as f:
+                    f.write(f"{output}\n")
+                print(output)
+            if epoch % 10 == 0:
+                    plt.savefig(img_dir / f"fake-{str(epoch).zfill(4)}.png")
+                    torch.save(netG.state_dict(), chk_dir / f'{str(epoch).zfill(4)}.pth')
+                    with torch.no_grad():
+                        fake = netG(fixed_noise).detach().cpu()
+                    plt.figure(figsize=(8,8))
+                    plt.axis("off")
+                    plt.title("Fake Images (iteration " + str(iters) +")")
+                    plt.imshow(np.transpose(vutils.make_grid(fake, padding=2, normalize=True),(1,2,0)))
+                    plt.clf()
+                    plt.close()
             
             # Save Losses
             G_losses.append(errG.item())
             D_losses.append(errD.item())
 
             # Generate image
-            if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
+            if (iters % 500 == 0) or ((epoch == cfg.num_epochs-1) and (i == len(dataloader)-1)):
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach().cpu()
                 plt.figure(figsize=(8,8))
